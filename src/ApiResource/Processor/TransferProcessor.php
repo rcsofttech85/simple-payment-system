@@ -13,17 +13,18 @@ use App\Entity\Balance;
 use App\Entity\Transfer;
 use App\Enum\TransferStatus;
 use App\Services\IdempotencyService;
-use App\Services\RedisLockService;
+use App\Services\LockService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class TransferProcessor implements ProcessorInterface
 {
+    private const TRANSFER_PREFIX = 'transfer_';
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly IdempotencyService $idempotency,
-        private readonly RedisLockService $lock
+        private readonly LockService $lock
     ) {
     }
 
@@ -36,10 +37,9 @@ final class TransferProcessor implements ProcessorInterface
 
         /** @var TransferRequest $data */
 
-
-        //  IDEMPOTENCY CHECK
-
+        // IDEMPOTENCY CHECK
         if ($existing = $this->idempotency->getResponse($data->idempotencyKey)) {
+
             $transfer = $this->em->getRepository(Transfer::class)->find($existing['id']);
             return new TransferRead(
                 $transfer->getId()->toString(),
@@ -63,16 +63,11 @@ final class TransferProcessor implements ProcessorInterface
         }
 
 
-        //  REDIS LOCK (PREVENT DOUBLE SPENDING)
-
-        $lockKey = "transfer_lock:" . $from->getId();
-
+        // REDIS LOCK (PREVENT DOUBLE SPENDING)
+        $lockKey = self::TRANSFER_PREFIX.$from->getId()->toString();
         if (!$this->lock->acquireLock($lockKey, 10)) {
             throw new ConflictHttpException("Transfer is already in progress for this account");
         }
-
-
-        //  BEGIN BUSINESS LOGIC
 
         try {
             $this->em->beginTransaction();
@@ -96,25 +91,18 @@ final class TransferProcessor implements ProcessorInterface
             $this->em->flush();
             $this->em->commit();
 
-
             // STORE IDEMPOTENCY RESPONSE
-
             $this->idempotency->storeResponse(
                 $data->idempotencyKey,
-                ['id' => $transfer->getId()->toString()],
+                ['id' => $transfer->getId()->toString()]
             );
 
         } catch (\Throwable $e) {
             $this->em->rollback();
             throw $e;
         } finally {
-
-            // ALWAYS RELEASE LOCK
             $this->lock->releaseLock($lockKey);
         }
-
-
-        //RETURN API DTO
 
         return new TransferRead(
             $transfer->getId()->toString(),

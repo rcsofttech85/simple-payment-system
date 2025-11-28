@@ -19,11 +19,6 @@ services:
     App\:
         resource: '../src/'
 
-    Predis\Client:
-        class: Predis\Client
-        arguments:
-            - '%env(REDIS_URL)%'
-
     redis.connection:
         class: Predis\Client
         arguments:
@@ -32,6 +27,13 @@ services:
     App\ApiResource\Provider\BalanceProvider:
         arguments:
             $redisCache: '@redis_cache'
+
+    App\Services\IdempotencyService:
+        arguments:
+            $cache: '@redis_cache'
+
+
+
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
