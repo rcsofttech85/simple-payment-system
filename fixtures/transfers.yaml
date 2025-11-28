@@ -1,0 +1,10 @@
+App\Entity\Transfer:
+  transfer_{1..30}:
+    
+    fromAccount: '@account_<numberBetween(1,10)>'
+    toAccount: '@account_<numberBetween(1,10)>'
+    amount: <randomFloat(2, 10, 5000)>
+    currency: <randomElement(['INR', 'USD', 'EUR'])>
+    status: <randomElement(['pending', 'completed', 'failed'])>
+    idempotencyKey: <sha1()>
+    createdAt: <dateTimeBetween('-20 days', 'now')>

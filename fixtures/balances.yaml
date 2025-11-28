@@ -1,0 +1,6 @@
+App\Entity\Balance:
+  balance_{1..10}:
+    
+    account: '@account_<current()>'
+    available: <randomFloat(2, 1000, 50000)>
+    updatedAt: <dateTimeBetween('-10 days', 'now')>
