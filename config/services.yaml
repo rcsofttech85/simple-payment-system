@@ -24,5 +24,14 @@ services:
         arguments:
             - '%env(REDIS_URL)%'
 
+    redis.connection:
+        class: Predis\Client
+        arguments:
+            - '%env(REDIS_URL)%'
+
+    App\ApiResource\Provider\BalanceProvider:
+        arguments:
+            $redisCache: '@redis_cache'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
