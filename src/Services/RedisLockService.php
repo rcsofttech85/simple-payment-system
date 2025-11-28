@@ -8,11 +8,9 @@ use Predis\Client;
 
 final class RedisLockService
 {
-    private Client $redis;
-
-    public function __construct(Client $redis)
+    public function __construct(private Client $redis)
     {
-        $this->redis = $redis;
+
     }
 
     public function acquireLock(string $key, int $ttl = 10): bool

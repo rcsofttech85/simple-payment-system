@@ -9,20 +9,23 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class TransferRequest
 {
-    #[Assert\NotBlank]
-    #[Groups(["transfer:write"])]
-    public string $fromAccountId;
-
-    #[Assert\NotBlank]
-    #[Groups(["transfer:write"])]
-    public string $toAccountId;
-
-    #[Assert\NotBlank]
-    #[Assert\Positive]
-    #[Groups(["transfer:write"])]
-    public string $amount;
-
-    #[Assert\NotBlank]
-    #[Groups(["transfer:write"])]
-    public string $currency;
+    public function __construct(
+        #[Assert\NotBlank]
+        #[Groups(["transfer:write"])]
+        public string $fromAccountId,
+        #[Assert\NotBlank]
+        #[Groups(["transfer:write"])]
+        public string $toAccountId,
+        #[Assert\NotBlank]
+        #[Assert\Positive]
+        #[Groups(["transfer:write"])]
+        public string $amount,
+        #[Assert\NotBlank]
+        #[Groups(["transfer:write"])]
+        public string $currency,
+        #[Assert\NotBlank]
+        #[Groups(["transfer:write"])]
+        public string $idempotencyKey,
+    ) {
+    }
 }

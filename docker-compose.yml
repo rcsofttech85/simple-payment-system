@@ -7,6 +7,7 @@ services:
     volumes:
       - ./:/var/www/html:cached
     depends_on:
+      - mysql_test
       - mysql
       - redis
     environment:
@@ -42,6 +43,23 @@ services:
       - db_data:/var/lib/mysql
     networks:
       - paysera_net
+
+  mysql_test:
+    image: mysql:8.0
+    container_name: paysera_mysql_test
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: paysera_test
+      MYSQL_USER: paysera
+      MYSQL_PASSWORD: paysera
+    ports:
+      - "3307:3306"
+    networks:
+      - paysera_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 5
 
   redis:
     image: redis:7

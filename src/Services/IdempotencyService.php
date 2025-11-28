@@ -8,10 +8,9 @@ use Predis\Client;
 
 final class IdempotencyService
 {
-    private Client $redis;
-    public function __construct(Client $redis)
+    public function __construct(private Client $redis)
     {
-        $this->redis = $redis;
+
     }
 
     public function getResponse(string $key): ?array
