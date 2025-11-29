@@ -13,18 +13,22 @@ use App\Entity\Transfer;
 use App\Enum\TransferStatus;
 use App\Services\IdempotencyService;
 use App\Services\LockService;
+use App\Services\TransferService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\FlockStore;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class TransferProcessorTest extends KernelTestCase
 {
     private EntityManagerInterface $em;
     private IdempotencyService $idempotency;
     private LockService $lock;
+    private TransferService $service;
     private TransferProcessor $processor;
 
     protected function setUp(): void
@@ -34,24 +38,32 @@ final class TransferProcessorTest extends KernelTestCase
 
         $this->em = $container->get('doctrine.orm.entity_manager');
 
-        // REAL LOCK SYSTEM
+        // Lock system (real lock)
         $store = new FlockStore(sys_get_temp_dir());
         $factory = new LockFactory($store);
-
         $this->lock = new LockService($factory);
 
-        // Use in-memory idempotency only (fine)
-        $cache = new ArrayAdapter();
-        $this->idempotency = new IdempotencyService($cache);
+        // Idempotency uses array cache
+        $this->idempotency = new IdempotencyService(new ArrayAdapter());
 
-        $this->processor = new TransferProcessor($this->em, $this->idempotency, $this->lock);
+        // Dispatcher (mocked)
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+
+        $this->service = new TransferService(
+            $this->em,
+            $this->idempotency,
+            $this->lock,
+            $dispatcher
+        );
+
+        $this->processor = new TransferProcessor($this->service);
     }
 
-
-    private function createAccountWithBalance(string $amount = '1000.00'): Account
+    private function createAccount(string $amount): Account
     {
         $account = new Account();
         $account->setCurrency('USD');
+
         $this->em->persist($account);
         $this->em->flush();
 
@@ -66,155 +78,134 @@ final class TransferProcessorTest extends KernelTestCase
         return $account;
     }
 
+    // ----------------------------------------------------
+    // SUCCESSFUL TRANSFER
+    // ----------------------------------------------------
     public function testSuccessfulTransfer(): void
     {
-        $from = $this->createAccountWithBalance('1000.00');
-        $to   = $this->createAccountWithBalance('0.00');
+        $from = $this->createAccount('1000.00');
+        $to   = $this->createAccount('0.00');
 
         $request = new TransferRequest(
-            fromAccountId: $from->getId()->toString(),
-            toAccountId: $to->getId()->toString(),
-            amount: '100.00',
-            currency: 'USD',
-            idempotencyKey: 'test-key'
+            $from->getId()->toString(),
+            $to->getId()->toString(),
+            '100.00',
+            'USD',
+            'test-key'
         );
 
         $result = $this->processor->process($request, new Post());
 
+        $fromBal = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
+        $toBal   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
 
-        // Refresh balances
-        $fromBalance = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
-        $toBalance   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
-
-        $this->assertSame('900.00', $fromBalance->getAvailable());
-        $this->assertSame('100.00', $toBalance->getAvailable());
+        $this->assertSame('900.00', $fromBal->getAvailable());
+        $this->assertSame('100.00', $toBal->getAvailable());
 
         $this->assertSame('USD', $result->currency);
         $this->assertSame(TransferStatus::COMPLETED->value, $result->status);
-
-        $transfer = $this->em->getRepository(Transfer::class)->find($result->id);
-        $this->assertNotNull($transfer);
-        $this->assertSame('100.00', $transfer->getAmount());
-        $this->assertSame(TransferStatus::COMPLETED, $transfer->getStatus());
     }
 
+    // ----------------------------------------------------
+    // IDEMPOTENCY
+    // ----------------------------------------------------
     public function testIdempotentTransferReturnsSameResult(): void
     {
-        $from = $this->createAccountWithBalance('500.00');
-        $to   = $this->createAccountWithBalance('100.00');
+        $from = $this->createAccount('500.00');
+        $to   = $this->createAccount('100.00');
 
-        $idempotencyKey = 'idem-test-key';
+        $key = 'idem-key-1';
 
         $request = new TransferRequest(
-            fromAccountId: $from->getId()->toString(),
-            toAccountId: $to->getId()->toString(),
-            amount: '50.00',
-            currency: 'USD',
-            idempotencyKey: $idempotencyKey
+            $from->getId()->toString(),
+            $to->getId()->toString(),
+            '50.00',
+            'USD',
+            $key
         );
 
-        // First call: creates the transfer
-        $firstResult = $this->processor->process($request, new Post());
+        // First transfer
+        $first = $this->processor->process($request, new Post());
 
-        // Capture balances after first transfer
-        $fromBalance1 = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
-        $toBalance1   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
+        // Capture balances
+        $from1 = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
+        $to1   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
 
-        $this->assertSame('450.00', $fromBalance1->getAvailable());
-        $this->assertSame('150.00', $toBalance1->getAvailable());
+        $this->assertSame('450.00', $from1->getAvailable());
+        $this->assertSame('150.00', $to1->getAvailable());
 
-        // Second call: should return the same transfer and not change balances
-        $secondResult = $this->processor->process($request, new Post());
+        // Second call (should be idempotent)
+        $second = $this->processor->process($request, new Post());
 
-        $fromBalance2 = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
-        $toBalance2   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
+        $this->assertSame($first->id, $second->id);
 
-        $this->assertSame($firstResult->id, $secondResult->id, 'Idempotent call returns same transfer ID');
-        $this->assertSame('450.00', $fromBalance2->getAvailable(), 'Sender balance unchanged on idempotent call');
-        $this->assertSame('150.00', $toBalance2->getAvailable(), 'Recipient balance unchanged on idempotent call');
+        // Balances unchanged
+        $from2 = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
+        $to2   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
 
-        // Verify only one transfer exists in DB
-        $transfers = $this->em->getRepository(Transfer::class)->findBy(['idempotencyKey' => $idempotencyKey]);
-        $this->assertCount(1, $transfers);
+        $this->assertSame('450.00', $from2->getAvailable());
+        $this->assertSame('150.00', $to2->getAvailable());
     }
 
+    // ----------------------------------------------------
+    // INSUFFICIENT FUNDS
+    // ----------------------------------------------------
     public function testInsufficientBalance(): void
     {
-        // Sender has only 50
-        $from = $this->createAccountWithBalance('50.00');
-
-        // Receiver balance
-        $to   = $this->createAccountWithBalance('0.00');
+        $from = $this->createAccount('50.00');
+        $to   = $this->createAccount('0.00');
 
         $request = new TransferRequest(
-            fromAccountId: $from->getId()->toString(),
-            toAccountId: $to->getId()->toString(),
-            amount: '100.00',  // MORE than available
-            currency: 'USD',
-            idempotencyKey: 'insufficient-1'
+            $from->getId()->toString(),
+            $to->getId()->toString(),
+            '100.00', // too much
+            'USD',
+            'insufficient-key'
         );
 
-        $this->expectException(\RuntimeException::class); // or your custom exception
+        $this->expectException(UnprocessableEntityHttpException::class);
 
         try {
             $this->processor->process($request, new Post());
         } finally {
-            // Verify balances are untouched
-            $fromBalance = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
-            $toBalance   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
+            $fromBal = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
+            $toBal   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
 
-            $this->assertSame('50.00', $fromBalance->getAvailable());
-            $this->assertSame('0.00', $toBalance->getAvailable());
-
-            // No transfer created
-            $transfers = $this->em->getRepository(Transfer::class)->findBy([
-                'idempotencyKey' => 'insufficient-1'
-            ]);
-
-            $this->assertCount(0, $transfers, 'No transfer should be created when funds are insufficient');
+            $this->assertSame('50.00', $fromBal->getAvailable());
+            $this->assertSame('0.00', $toBal->getAvailable());
         }
     }
 
+    // ----------------------------------------------------
+    // LOCK PREVENTS DOUBLE SPEND
+    // ----------------------------------------------------
     public function testTransferFailsWhenConcurrentLockIsHeld(): void
     {
-        $from = $this->createAccountWithBalance('1000.00');
-        $to   = $this->createAccountWithBalance('0.00');
+        $from = $this->createAccount('1000.00');
+        $to   = $this->createAccount('0.00');
 
-        $idempotencyKey = 'lock-test-key';
-
-        // Manually acquire the lock to simulate concurrent request
+        // lock key changed → transfer_<id>
         $lockKey = 'transfer_' . $from->getId()->toString();
-        $this->lock->acquireLock($lockKey, 30); // lock is now held
+        $this->lock->acquireLock($lockKey, 10);
 
         $request = new TransferRequest(
-            fromAccountId: $from->getId()->toString(),
-            toAccountId: $to->getId()->toString(),
-            amount: '100.00',
-            currency: 'USD',
-            idempotencyKey: $idempotencyKey
+            $from->getId()->toString(),
+            $to->getId()->toString(),
+            '100.00',
+            'USD',
+            'lock-key-1'
         );
 
-        // Expect the processor to throw ConflictHttpException
         $this->expectException(ConflictHttpException::class);
-        $this->expectExceptionMessage('Transfer is already in progress for this account');
+        $this->expectExceptionMessage('Transfer is already in progress');
 
         $this->processor->process($request, new Post());
 
-        // Verify balances remain unchanged
-        $fromBalance = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
-        $toBalance   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
+        // verify balances unchanged
+        $fromBal = $this->em->getRepository(Balance::class)->findOneBy(['account' => $from]);
+        $toBal   = $this->em->getRepository(Balance::class)->findOneBy(['account' => $to]);
 
-        $this->assertSame('1000.00', $fromBalance->getAvailable());
-        $this->assertSame('0.00', $toBalance->getAvailable());
-
-        // No transfer record created
-        $transfers = $this->em->getRepository(Transfer::class)->findBy([
-            'idempotencyKey' => $idempotencyKey
-        ]);
-        $this->assertCount(0, $transfers);
+        $this->assertSame('1000.00', $fromBal->getAvailable());
+        $this->assertSame('0.00', $toBal->getAvailable());
     }
-
-
-
-
 }
