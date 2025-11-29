@@ -34,12 +34,17 @@ class Account
      * @var Collection<int, Transfer>
      */
     #[ORM\OneToMany(targetEntity: Transfer::class, mappedBy: 'fromAccount')]
-    private Collection $transfers;
+    private Collection $outgoingTransfers;
+
+    #[ORM\OneToMany(targetEntity: Transfer::class, mappedBy: 'toAccount')]
+    private Collection $incomingTransfers;
+
 
     public function __construct()
     {
 
-        $this->transfers = new ArrayCollection();
+        $this->outgoingTransfers = new ArrayCollection();
+        $this->incomingTransfers = new ArrayCollection();
         $this->createdAt = new DateTimeImmutable();
     }
 
@@ -65,29 +70,59 @@ class Account
         return $this->createdAt;
     }
 
+    /**
+     * @return Collection<int, Transfer>
+     */
+    public function getIncomingTransfer(): Collection
+    {
+        return $this->incomingTransfers;
+    }
+
+    public function addIncomingTransfer(Transfer $transfer): static
+    {
+        if (!$this->incomingTransfers->contains($transfer)) {
+            $this->incomingTransfers->add($transfer);
+            $transfer->setToAccount($this);
+        }
+
+        return $this;
+    }
+
+    public function removeIncomingTransfer(Transfer $transfer): static
+    {
+        if ($this->incomingTransfers->removeElement($transfer)) {
+
+            if ($transfer->getToAccount() === $this) {
+                $transfer->setToAccount(null);
+            }
+        }
+
+        return $this;
+    }
+
 
 
     /**
      * @return Collection<int, Transfer>
      */
-    public function getTransfers(): Collection
+    public function getOutgoingTransfer(): Collection
     {
-        return $this->transfers;
+        return $this->outgoingTransfers;
     }
 
-    public function addTransfer(Transfer $transfer): static
+    public function addOutgoingTransfer(Transfer $transfer): static
     {
-        if (!$this->transfers->contains($transfer)) {
-            $this->transfers->add($transfer);
+        if (!$this->outgoingTransfers->contains($transfer)) {
+            $this->outgoingTransfers->add($transfer);
             $transfer->setFromAccount($this);
         }
 
         return $this;
     }
 
-    public function removeTransfer(Transfer $transfer): static
+    public function removeOutgoingTransfer(Transfer $transfer): static
     {
-        if ($this->transfers->removeElement($transfer)) {
+        if ($this->outgoingTransfers->removeElement($transfer)) {
             // set the owning side to null (unless already changed)
             if ($transfer->getFromAccount() === $this) {
                 $transfer->setFromAccount(null);

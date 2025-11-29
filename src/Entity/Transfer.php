@@ -36,10 +36,10 @@ class Transfer
     #[ORM\CustomIdGenerator(class: UuidV7Generator::class)]
     private ?UuidInterface $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'transfers')]
+    #[ORM\ManyToOne(inversedBy: 'outgoingTransfers')]
     private ?Account $fromAccount = null;
 
-    #[ORM\ManyToOne(inversedBy: 'transfers')]
+    #[ORM\ManyToOne(inversedBy: 'incomingTransfers')]
     private ?Account $toAccount = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 18, scale: 2)]
