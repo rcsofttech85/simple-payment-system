@@ -1,4 +1,4 @@
-#  Paysera Transfer Feature
+#  Funds Transfer Feature
 
 This repository contains a **fund transfer feature** built with **Symfony 7**, **PHP 8.4**, **Doctrine ORM**, and **Redis** for caching and idempotency.
 
@@ -19,7 +19,7 @@ It demonstrates **secure, idempotent, and concurrency-safe transfers** between a
 
 ##  Architecture Diagram
 
-![Paysera Transfer Architecture](docs/paysera.png)
+![Fund Transfer Architecture](docs/diagram.png)
 
 ---
 
