@@ -9,6 +9,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Ramsey\Uuid\Doctrine\UuidV7Generator;
 use Ramsey\Uuid\UuidInterface;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 #[ORM\Entity(repositoryClass: BalanceRepository::class)]
 class Balance
@@ -78,7 +79,7 @@ class Balance
     public function debit(string $amount): void
     {
         if (bccomp($this->available, $amount, 2) < 0) {
-            throw new \RuntimeException('Insufficient funds');
+            throw new UnprocessableEntityHttpException('Insufficient funds');
         }
         $this->available = bcsub($this->available, $amount, 2);
         $this->updatedAt = new \DateTimeImmutable();

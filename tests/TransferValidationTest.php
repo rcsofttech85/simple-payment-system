@@ -5,26 +5,29 @@ declare(strict_types=1);
 namespace App\Tests\Api\Transfer;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
+use App\Entity\User;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 final class TransferValidationTest extends ApiTestCase
 {
     private const ENDPOINT = '/api/transfers';
-    private const JWT_TOKEN  = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NjQzOTIwNzAsImV4cCI6MTc2NTM5MjA3MCwianRpIjoiZDM5N2YyYTFjYTk4OTk3YzljZDYxOWM1MDdlMTQyMGQiLCJyb2xlcyI6WyJST0xFX1VTRVIiXSwidXNlcm5hbWUiOiJvZXJkbWFuQHlhaG9vLmNvbSJ9.A_witb_HyzXlSvqLefptStQxQBL2AQjtLqdkPcY_o8mTSdP72tYo-VwBVf08nx4ct-zreK3uF1UFW32j95y4JVQeRNmMtK1FJVbxemBExhLQuQyXMr7iGnicHG6J9YTbopmNEOlXT54iXbVS9MzlTtQtbjI-TH61c2ftBXFj_6PYuLJ7kB748DE8uxdUsWcn90pS30FgVqWU2H-rgMCN7Krn7OPjY3hb_LzAJijSCWS3In-BaO6KwNxzCBkAvz7pLJtbZDsd0VKzON5UpcwC11aydM39stPEWtu-QqfSXZ3Hg9mW35Qqh4_y3lxETTTRGURyk12BRBtXCklnZAG8Cw";
-
 
 
     #[DataProvider('invalidPayloadProvider')]
-
     public function testValidationErrors(array $override, string $expectedField): void
     {
         $payload = [...$this->baseValidPayload(), ...$override];
 
         static::$alwaysBootKernel = true;
         $client = static::createClient();
+
+        $user = new User();
+        $user->setEmail('test_api_user');
+        $user->setRoles(['ROLE_USER']);
+        $client->loginUser($user, 'api');
         $client->request('POST', self::ENDPOINT, [
             'headers' => [
-                'Authorization' => 'Bearer ' . self::JWT_TOKEN,
+
                 'Content-Type' => 'application/ld+json',
             ],
             'json' => $payload,
