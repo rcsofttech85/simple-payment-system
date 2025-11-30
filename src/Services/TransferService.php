@@ -10,6 +10,8 @@ use App\Entity\Transfer;
 use App\Enum\TransferStatus;
 use App\Event\TransferCompletedEvent;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -21,7 +23,8 @@ final class TransferService
         private readonly EntityManagerInterface $em,
         private readonly IdempotencyService $idempotency,
         private readonly LockService $lock,
-        private readonly EventDispatcherInterface $dispatcher
+        private readonly EventDispatcherInterface $dispatcher,
+        private readonly Security $security
     ) {
     }
 
@@ -39,6 +42,11 @@ final class TransferService
         }
 
         $from = $this->getAccount($fromAccountId, 'From account not found');
+
+
+        if ($this->security->getUser() !== $from->getUser()) {
+            throw new AccessDeniedHttpException("Invalid Sender Account");
+        }
         $to   = $this->getAccount($toAccountId, 'To account not found');
 
         // LOCK PREVENT DOUBLE SPENDING

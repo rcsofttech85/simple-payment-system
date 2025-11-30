@@ -16,6 +16,7 @@ use App\Services\LockService;
 use App\Services\TransferService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -38,6 +39,7 @@ final class TransferProcessorTest extends KernelTestCase
 
         $this->em = $container->get('doctrine.orm.entity_manager');
 
+
         // Lock system (real lock)
         $store = new FlockStore(sys_get_temp_dir());
         $factory = new LockFactory($store);
@@ -46,14 +48,16 @@ final class TransferProcessorTest extends KernelTestCase
         // Idempotency uses array cache
         $this->idempotency = new IdempotencyService(new ArrayAdapter());
 
-        // Dispatcher (mocked)
+        // mocked
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $security = $this->createMock(Security::class);
 
         $this->service = new TransferService(
             $this->em,
             $this->idempotency,
             $this->lock,
-            $dispatcher
+            $dispatcher,
+            $security
         );
 
         $this->processor = new TransferProcessor($this->service);

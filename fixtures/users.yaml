@@ -1,5 +1,5 @@
 App\Entity\User:
-  user_{1..1}:
+  user_{1..10}:
     email: <email()>
     roles: ['ROLE_USER']
     password: "<(password_hash('password', PASSWORD_BCRYPT))>"

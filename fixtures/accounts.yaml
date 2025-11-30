@@ -1,5 +1,6 @@
 App\Entity\Account:
   account_{1..10}:
-   
     currency: <randomElement(['INR', 'USD', 'EUR'])>
+    user: '@user_<current()>'
+
    

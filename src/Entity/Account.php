@@ -39,6 +39,9 @@ class Account
     #[ORM\OneToMany(targetEntity: Transfer::class, mappedBy: 'toAccount')]
     private Collection $incomingTransfers;
 
+    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    private ?User $user = null;
+
 
     public function __construct()
     {
@@ -128,6 +131,18 @@ class Account
                 $transfer->setFromAccount(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): static
+    {
+        $this->user = $user;
 
         return $this;
     }
