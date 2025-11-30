@@ -10,9 +10,11 @@ use App\ApiResource\Processor\TransferProcessor;
 use App\Entity\Account;
 use App\Entity\Balance;
 use App\Entity\Transfer;
+use App\Entity\User;
 use App\Enum\TransferStatus;
 use App\Services\IdempotencyService;
 use App\Services\LockService;
+use App\Services\RateLimiterService;
 use App\Services\TransferService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -39,7 +41,6 @@ final class TransferProcessorTest extends KernelTestCase
 
         $this->em = $container->get('doctrine.orm.entity_manager');
 
-
         // Lock system (real lock)
         $store = new FlockStore(sys_get_temp_dir());
         $factory = new LockFactory($store);
@@ -48,25 +49,57 @@ final class TransferProcessorTest extends KernelTestCase
         // Idempotency uses array cache
         $this->idempotency = new IdempotencyService(new ArrayAdapter());
 
-        // mocked
+        // Dispatcher (mocked)
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($this->createUser());
+
+
+        $limiter = $this->createMock(RateLimiterService::class);
+
 
         $this->service = new TransferService(
             $this->em,
             $this->idempotency,
             $this->lock,
             $dispatcher,
-            $security
+            $security,
+            $limiter
         );
 
         $this->processor = new TransferProcessor($this->service);
     }
 
-    private function createAccount(string $amount): Account
+    private function createUser(): User
+    {
+        $user = new User();
+
+        $user->setEmail('rcsofttech85@gmail.com');
+        $user->setPassword('password');
+        $user->setRoles(['ROLE_USER']);
+
+        $this->em->persist($user);
+        $this->em->flush();
+
+        return $user;
+    }
+
+    private function getUser(string $email): User
+    {
+        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+
+        return $user;
+
+    }
+
+    private function createAccount(string $amount, string $accountType = 'from'): Account
     {
         $account = new Account();
         $account->setCurrency('USD');
+        if ('from' === $accountType) {
+            $account->setUser($this->getUser('rcsofttech85@gmail.com'));
+        }
+
 
         $this->em->persist($account);
         $this->em->flush();
@@ -88,7 +121,7 @@ final class TransferProcessorTest extends KernelTestCase
     public function testSuccessfulTransfer(): void
     {
         $from = $this->createAccount('1000.00');
-        $to   = $this->createAccount('0.00');
+        $to   = $this->createAccount('0.00', 'to');
 
         $request = new TransferRequest(
             $from->getId()->toString(),
@@ -116,7 +149,7 @@ final class TransferProcessorTest extends KernelTestCase
     public function testIdempotentTransferReturnsSameResult(): void
     {
         $from = $this->createAccount('500.00');
-        $to   = $this->createAccount('100.00');
+        $to   = $this->createAccount('100.00', 'to');
 
         $key = 'idem-key-1';
 
@@ -157,7 +190,7 @@ final class TransferProcessorTest extends KernelTestCase
     public function testInsufficientBalance(): void
     {
         $from = $this->createAccount('50.00');
-        $to   = $this->createAccount('0.00');
+        $to   = $this->createAccount('0.00', 'to');
 
         $request = new TransferRequest(
             $from->getId()->toString(),
@@ -186,7 +219,7 @@ final class TransferProcessorTest extends KernelTestCase
     public function testTransferFailsWhenConcurrentLockIsHeld(): void
     {
         $from = $this->createAccount('1000.00');
-        $to   = $this->createAccount('0.00');
+        $to   = $this->createAccount('0.00', 'to');
 
         // lock key changed → transfer_<id>
         $lockKey = 'transfer_' . $from->getId()->toString();

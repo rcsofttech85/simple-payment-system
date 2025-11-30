@@ -8,15 +8,19 @@ use ApiPlatform\Metadata\Operation;
 use App\ApiResource\DTO\BalanceRead;
 use App\ApiResource\Provider\BalanceProvider;
 use App\Entity\Balance;
+use App\Entity\User;
+use App\Services\RateLimiterService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
+use Ramsey\Uuid\Uuid;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
-final class BalanceProviderTest extends TestCase
+final class BalanceProviderTest extends KernelTestCase
 {
     private EntityManagerInterface&MockObject $emMock;
     private CacheInterface&MockObject $redisCacheMock;
@@ -25,8 +29,10 @@ final class BalanceProviderTest extends TestCase
 
     protected function setUp(): void
     {
+
         // 1. Mock the Doctrine Repository
         $this->repositoryMock = $this->createMock(EntityRepository::class);
+
 
         // 2. Mock the Entity Manager
         $this->emMock = $this->createMock(EntityManagerInterface::class);
@@ -37,12 +43,38 @@ final class BalanceProviderTest extends TestCase
 
         // 3. Mock the Cache
         $this->redisCacheMock = $this->createMock(CacheInterface::class);
+        $security = $this->createMock(Security::class);
+        $security->method('getUser')->willReturn($this->mockUser());
+
+
+        $limiter = $this->createMock(RateLimiterService::class);
 
         // 4. Instantiate the Provider with mocks
         $this->provider = new BalanceProvider(
             $this->emMock,
-            $this->redisCacheMock
+            $this->redisCacheMock,
+            $security,
+            $limiter
         );
+    }
+
+    private function mockUser(): User
+    {
+        $user = $this->createMock(User::class);
+
+        $user->method('getId')
+            ->willReturn(Uuid::uuid7());
+
+        $user->method('getEmail')
+            ->willReturn('mock@example.com');
+
+        $user->method('getUserIdentifier')
+            ->willReturn('mock@example.com');
+
+        $user->method('getRoles')
+            ->willReturn(['ROLE_USER']);
+
+        return $user;
     }
 
     public function testProvideThrowsNotFoundException(): void

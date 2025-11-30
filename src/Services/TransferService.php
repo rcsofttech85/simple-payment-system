@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Entity\Account;
 use App\Entity\Balance;
 use App\Entity\Transfer;
+use App\Entity\User;
 use App\Enum\TransferStatus;
 use App\Event\TransferCompletedEvent;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,7 +25,8 @@ final class TransferService
         private readonly IdempotencyService $idempotency,
         private readonly LockService $lock,
         private readonly EventDispatcherInterface $dispatcher,
-        private readonly Security $security
+        private readonly Security $security,
+        private readonly RateLimiterService $limiterService
     ) {
     }
 
@@ -36,6 +38,14 @@ final class TransferService
         string $idempotencyKey
     ): Transfer {
 
+        // Get Current User
+
+        /** @var User $user */
+        $user = $this->security->getUser();
+
+        //  Rate limiting
+        $this->limiterService->consumeTransferLimit($user->getId()->toString());
+
         // IDEMPOTENCY CHECK
         if ($existing = $this->idempotency->getResponse($idempotencyKey)) {
             return $this->loadTransfer($existing['id']);
@@ -44,10 +54,11 @@ final class TransferService
         $from = $this->getAccount($fromAccountId, 'From account not found');
 
 
-        if ($this->security->getUser() !== $from->getUser()) {
+        if ($user !== $from->getUser()) {
             throw new AccessDeniedHttpException("Invalid Sender Account");
         }
         $to   = $this->getAccount($toAccountId, 'To account not found');
+
 
         // LOCK PREVENT DOUBLE SPENDING
         $lockKey = self::TRANSFER_PREFIX . $from->getId();

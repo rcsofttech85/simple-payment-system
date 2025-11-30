@@ -1,0 +1,7 @@
+framework:
+  rate_limiter:
+    transfer:
+      policy: 'token_bucket'       # flexible bursty limiter
+      limit: 3                    # max tokens in bucket
+      rate: { interval: '1 minute', amount: 3 } # refill 10 tokens per minute
+      cache_pool: 'redis_cache' 
