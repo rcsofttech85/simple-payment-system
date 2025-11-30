@@ -1,6 +1,6 @@
 #  Funds Transfer Feature
 
-This repository contains a **fund transfer feature** built with **Symfony 7**, **PHP 8.4**, **Doctrine ORM**, and **Redis** for caching and idempotency.
+This repository contains a **funds transfer feature** built with **Symfony 7**, **PHP 8.4**, **Doctrine ORM**, and **Redis** for caching and idempotency.
 
 It demonstrates **secure, idempotent, and concurrency-safe transfers** between accounts.
 
@@ -35,7 +35,7 @@ Follow these steps to get the project running locally using Docker.
     ```bash
     cd simple-payment-system
     ```
-3.  **Container Set Up**: Start the Docker containers (PHP, PostgreSQL, Redis).
+3.  **Container Set Up**: Start the Docker containers (PHP, MYSQL, Redis).
     ```bash
     docker compose up -d
     ```
