@@ -20,12 +20,14 @@ use Ramsey\Uuid\UuidInterface;
 #[ApiResource(
     operations: [
         new Post(
-            uriTemplate: '/transfers',
+            uriTemplate: '/v1/transfers',
             input: TransferRequest::class,
             output: TransferRead::class,
             processor: TransferProcessor::class
         )
-    ]
+        ],
+    normalizationContext:['groups' => ['transfer:read:v1']],
+    denormalizationContext:['groups' => ['transfer:write:v1']]
 )]
 
 class Transfer

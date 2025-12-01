@@ -9,19 +9,19 @@ use Symfony\Component\Serializer\Annotation\Groups;
 final class TransferRead
 {
     public function __construct(
-        #[Groups(["transfer:read"])]
+        #[Groups(["transfer:read:v1"])]
         public string $id,
-        #[Groups(["transfer:read"])]
+        #[Groups(["transfer:read:v1"])]
         public string $fromAccountId,
-        #[Groups(["transfer:read"])]
+        #[Groups(["transfer:read:v1"])]
         public string $toAccountId,
-        #[Groups(["transfer:read"])]
+        #[Groups(["transfer:read:v1"])]
         public string $amount,
-        #[Groups(["transfer:read"])]
+        #[Groups(["transfer:read:v1"])]
         public string $currency,
-        #[Groups(["transfer:read"])]
+        #[Groups(["transfer:read:v1"])]
         public string $status,
-        #[Groups(["transfer:read"])]
+        #[Groups(["transfer:read:v1"])]
         public \DateTimeImmutable $createdAt
     ) {
     }

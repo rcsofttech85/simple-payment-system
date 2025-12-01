@@ -12,7 +12,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ApiResource(
     operations: [
         new Get(
-            uriTemplate: '/accounts/{id}/balance',
+            uriTemplate: '/v1/accounts/{id}/balance',
             name: 'account_balance',
             provider: BalanceProvider::class,
             output: BalanceRead::class

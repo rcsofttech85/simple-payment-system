@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 
 final class TransferValidationTest extends ApiTestCase
 {
-    private const ENDPOINT = '/api/transfers';
+    private const ENDPOINT = '/api/v1/transfers';
 
 
     #[DataProvider('invalidPayloadProvider')]

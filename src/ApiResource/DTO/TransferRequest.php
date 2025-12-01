@@ -13,7 +13,7 @@ final class TransferRequest
         #[
             Assert\NotBlank,
             Assert\Uuid(message: "Invalid UUID for fromAccountId"),
-            Groups(["transfer:write"])
+            Groups(["transfer:write:v1"])
         ]
         public string $fromAccountId,
         #[
@@ -23,7 +23,7 @@ final class TransferRequest
                 propertyPath: "fromAccountId",
                 message: "Sender and receiver accounts must be different."
             ),
-            Groups(["transfer:write"])
+            Groups(["transfer:write:v1"])
         ]
         public string $toAccountId,
         #[
@@ -33,13 +33,13 @@ final class TransferRequest
                 message: "Amount must be a valid decimal with up to 2 digits."
             ),
             Assert\Positive,
-            Groups(["transfer:write"])
+            Groups(["transfer:write:v1"])
         ]
         public string $amount,
         #[
             Assert\NotBlank,
             Assert\Currency(message: "Invalid or unsupported currency."),
-            Groups(["transfer:write"])
+            Groups(["transfer:write:v1"])
         ]
         public string $currency,
         #[
@@ -49,12 +49,12 @@ final class TransferRequest
                 maxMessage: "Idempotency key cannot exceed 100 characters."
             ),
             Assert\Regex(
-                pattern: "/^[A-Za-z0-9\-_:]+$/",
+                pattern: "/^[A-Za-z0-9\-_]+$/",
                 message: "Idempotency key may only contain letters, numbers, hyphens, underscores, and colons."
             ),
-            Groups(["transfer:write"])
+            Groups(["transfer:write:v1"])
         ]
-        public string $idempotencyKey,
+        public $idempotencyKey,
     ) {
     }
 }
