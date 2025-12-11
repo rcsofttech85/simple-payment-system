@@ -23,13 +23,13 @@ final class TransferEventSubscriber implements EventSubscriberInterface
     {
 
         $transfer = $event->getTransfer();
-        $this->logger->info(sprintf(
-            'Transfer completed: %s → %s Amount: %s %s',
-            $transfer->getFromAccount()->getId(),
-            $transfer->getToAccount()->getId(),
-            $transfer->getAmount(),
-            $transfer->getCurrency()
-        ));
+        $this->logger->info('Transfer completed', [
+            'transfer_id'  => $transfer->getId()->toString(),
+            'from_account' => $transfer->getFromAccount()->getId()->toString(),
+            'to_account'   => $transfer->getToAccount()->getId()->toString(),
+            'amount'       => (string) $transfer->getAmount(),
+            'completed_at' => new \DateTimeImmutable()->format(DATE_ATOM),
+        ]);
 
 
     }

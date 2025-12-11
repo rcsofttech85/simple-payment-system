@@ -3,7 +3,7 @@ services:
     build:
       context: ./docker/php
       dockerfile: Dockerfile
-    container_name: paysera_php
+    container_name: payment_php
     volumes:
       - ./:/var/www/html:cached
     depends_on:
@@ -13,11 +13,11 @@ services:
     environment:
       APP_ENV: dev
     networks:
-      - paysera_net
+      - payment_net
 
   nginx:
     image: nginx:1.25
-    container_name: paysera_nginx
+    container_name: payment_nginx
     ports:
       - "8080:80"
     volumes:
@@ -26,36 +26,40 @@ services:
     depends_on:
       - php
     networks:
-      - paysera_net
+      - payment_net
 
   mysql:
     image: mysql:8.0
-    container_name: paysera_mysql
+    container_name: payment_mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootroot
-      MYSQL_DATABASE: paysera
-      MYSQL_USER: paysera
-      MYSQL_PASSWORD: paysera
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: payment
+      MYSQL_USER: payment
+      MYSQL_PASSWORD: payment
     ports:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
     networks:
-      - paysera_net
+      - payment_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 5
 
   mysql_test:
     image: mysql:8.0
-    container_name: paysera_mysql_test
+    container_name: payment_mysql_test
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: paysera_test
-      MYSQL_USER: paysera
-      MYSQL_PASSWORD: paysera
+      MYSQL_DATABASE: payment_test
+      MYSQL_USER: payment
+      MYSQL_PASSWORD: payment
     ports:
       - "3307:3306"
     networks:
-      - paysera_net
+      - payment_net
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
@@ -63,18 +67,18 @@ services:
 
   redis:
     image: redis:7
-    container_name: paysera_redis
+    container_name: payment_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - paysera_net
+      - payment_net
 
 volumes:
   db_data:
   redis_data:
 
 networks:
-  paysera_net:
+  payment_net:
     driver: bridge

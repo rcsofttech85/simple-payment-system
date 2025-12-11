@@ -1,0 +1,20 @@
+meta {
+  name: Check Balance
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:8080/api/v1/accounts/019ad03d-66b8-72a2-9d6b-f2a2557b356b/balance
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NjQ2NjY4MjAsImV4cCI6MTc2NDY3MDQyMCwianRpIjoiOGRkM2UyM2Q1YzRmZmM4MDBiZjQ3ZmZjOGY3ZTQ5NTEiLCJyb2xlcyI6WyJST0xFX1VTRVIiXSwidXNlcm5hbWUiOiJvZXJkbWFuQHlhaG9vLmNvbSJ9.BeiadR5jj3AyjlNqVdCpN8AyZrBQjfIi2hpCFi_0OGhDUhZQt1BQukfLEA19XjMlB3hP3ojj_9WGaT1ME5e5PJ3mzo-Ko-2FanewmoD5na166k_eVwrnW3-mfW39P79qrxfiDWoS5taYoWJlAJsnCJx_KQqUHUukyvAvhCWl6RlbjvxwCWt0-V6UQA6WXmBOiC4pcWGe-NeJ1SbdPq-OLqqYOfXnWlQHUv82jrkvg9Xc4H0HK2ipNAydhaMRFRTwJWzTLvF6Tq51ELN3-4rOso_UQ1fhPCYZoGMHRaKVbyaZDlj29NY_PT9BY0bWQbyVVJ9Lw-lnlMS8ZjMilpt2qg
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

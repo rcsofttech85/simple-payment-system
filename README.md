@@ -41,7 +41,7 @@ Follow these steps to get the project running locally using Docker.
     ```
 4.  **Install Dependencies**: Execute Composer within the PHP container.
     ```bash
-    docker exec -it paysera_php bash
+    docker exec -it payment_php bash
     run composer install
     ```
 5.  **Database Set up** (Create database, run migrations, load fixtures):

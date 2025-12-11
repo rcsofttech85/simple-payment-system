@@ -1,0 +1,23 @@
+meta {
+  name: Get Token
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:8080/api/login_check
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "username": "oerdman@yahoo.com",
+    "password": "password"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
