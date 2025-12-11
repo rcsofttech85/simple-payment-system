@@ -76,21 +76,4 @@ APP_ENV=test   bin/console hautelook:fixtures:load --no-interaction
 APP_ENV=test bin/phpunit tests/
  ```
 
- ### Architecture Choice Explanation
 
-Although this assignment is implemented using REST with API Platform for simplicity, in a real-world environment, I would choose a microservice + event-driven architecture for the following reasons:
-
-**Loose coupling**: Each service can operate independently without direct synchronous dependencies.
-
-**Reliability**: Message brokers (RabbitMQ) guarantee no lost transactions, automatic retries, and durable event logs — critical for financial systems.
-
-**Scalability**: Horizontal scaling becomes significantly easier by adding more event consumers without impacting other services.
-
-**Auditability**: Event streams provide a complete, immutable trace of all financial operations, required for reconciliation and compliance.
-
-**Fault tolerance**: Transfers continue even if downstream services are temporarily unavailable.
-
-### Prompts Used
-
-REST vs event-driven for fintech transfers?
-How should transfer and balance updates be handled internally? etc
